@@ -369,7 +369,7 @@ wss.on("connection", (ws) => {
 
       room.pieces[you].forEach((pc,i)=>pc.n = nums[i]);
       computeMax(room, you);
-      room.log.push(`== Player ${you} submitted numbers (hidden). max=${room.maxN[you]} ==`);
+      room.log.push(`== Player ${you} submitted numbers (hidden). ==`);
 
       // advance to placement
       room.setupStep = (you===1) ? "P1_PLACE" : "P2_PLACE";
