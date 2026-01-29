@@ -1,30 +1,26 @@
 import express from "express";
 import http from "http";
+import path from "path";
+import { fileURLToPath } from "url";
 import { WebSocketServer } from "ws";
 
-const app = express();
-app.use(express.static("public"));
-
-const server = http.createServer(app);
-const wss = new WebSocketServer({ server });
-
-
-const express = require("express");
-const path = require("path");
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const app = express();
 
-// Serve static files from the repo root (so /index.html, /script.js, /style.css work)
+// Serve static files (if your index.html is in repo root)
 app.use(express.static(__dirname));
 
-// Make / return index.html
 app.get("/", (req, res) => {
   res.sendFile(path.join(__dirname, "index.html"));
 });
 
-// IMPORTANT for Render/hosting: use process.env.PORT and bind 0.0.0.0
+const server = http.createServer(app);
+const wss = new WebSocketServer({ server });
+
 const PORT = process.env.PORT || 10000;
-app.listen(PORT, "0.0.0.0", () => {
+server.listen(PORT, "0.0.0.0", () => {
   console.log(`Listening on ${PORT}`);
 });
 
