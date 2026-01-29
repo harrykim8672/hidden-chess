@@ -1,0 +1,410 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Hidden 7x7 Online</title>
+  <style>
+    :root{--bg:#0b0f14;--panel:#121823;--panel2:#0f1520;--text:#e8eef7;--muted:#aab6c5;--grid:#2b3647;--ok:#39d98a;--bad:#ff7a7a;}
+    body{margin:0;background:var(--bg);color:var(--text);font:14px/1.35 system-ui,-apple-system,Segoe UI,Roboto,Ubuntu;}
+    .wrap{max-width:1100px;margin:18px auto;padding:0 14px;display:grid;grid-template-columns: 520px 1fr;gap:14px;}
+    .card{background:linear-gradient(180deg,var(--panel),var(--panel2));border:1px solid #1f2a3b;border-radius:14px;box-shadow:0 10px 30px rgba(0,0,0,.25);padding:14px;}
+    h1{font-size:18px;margin:0 0 10px 0;}
+    h2{font-size:14px;margin:12px 0 8px 0;color:#d6e2f3;}
+    .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+    .btn{background:#1a2640;border:1px solid #2a3b60;color:var(--text);padding:8px 10px;border-radius:10px;cursor:pointer}
+    .btn.primary{background:#213a66;border-color:#3d5a96}
+    .btn.danger{background:#3b1b22;border-color:#7a2b3a}
+    .btn:disabled{opacity:.5;cursor:not-allowed}
+    .pill{padding:4px 8px;border-radius:999px;border:1px solid #2a3b60;background:#101a2e;color:var(--muted);font-size:12px}
+    .small{font-size:12px;color:var(--muted)}
+    .ok{color:var(--ok)} .bad{color:var(--bad)}
+    .grid{display:grid;grid-template-columns:repeat(7,66px);grid-template-rows:repeat(7,66px);gap:4px;user-select:none}
+    .cell{width:66px;height:66px;border-radius:10px;background:#0c1220;border:1px solid #1f2a3b;display:flex;align-items:center;justify-content:center;position:relative;cursor:pointer}
+    .cell.legal{box-shadow: inset 0 0 0 3px rgba(57,217,138,.65)}
+    .cell.sel{box-shadow: inset 0 0 0 3px rgba(74,163,255,.75)}
+    .cell.home1{outline:1px dashed rgba(74,163,255,.25)}
+    .cell.home2{outline:1px dashed rgba(255,170,74,.22)}
+    .cell.target1{box-shadow: inset 0 0 0 2px rgba(74,163,255,.35)}
+    .cell.target2{box-shadow: inset 0 0 0 2px rgba(255,170,74,.28)}
+    .piece{width:44px;height:44px;border-radius:999px;display:flex;align-items:center;justify-content:center;border:2px solid rgba(255,255,255,.22);font-weight:700;position:relative;box-shadow:0 6px 14px rgba(0,0,0,.35)}
+    .piece .dot{position:absolute;bottom:-6px;right:-6px;width:18px;height:18px;border-radius:999px;border:2px solid rgba(0,0,0,.35);display:flex;align-items:center;justify-content:center;font-size:11px;background:#0b0f14;color:#fff;}
+    .numbers{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
+    input[type="number"]{width:100%;padding:8px 6px;border-radius:10px;border:1px solid #2a3b60;background:#0c1220;color:var(--text);outline:none}
+    input[type="number"]:focus{border-color:#4aa3ff}
+    .log{height:330px;overflow:auto;background:#0b101b;border:1px solid #1f2a3b;border-radius:12px;padding:10px;font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono",monospace;font-size:12px;white-space:pre-wrap}
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <div class="card">
+    <h1>Hidden 7×7 Online</h1>
+
+    <div class="row" style="justify-content:space-between">
+      <div class="row">
+        <span class="pill" id="roomPill">Room: —</span>
+        <span class="pill" id="youPill">You: —</span>
+        <span class="pill" id="phasePill">Phase: —</span>
+        <span class="pill" id="turnPill">Turn: —</span>
+      </div>
+      <div class="row">
+        <button class="btn danger" id="resetBtn" disabled>Reset room</button>
+      </div>
+    </div>
+
+    <div style="height:10px"></div>
+
+    <div id="connectUI">
+      <div class="row">
+        <button class="btn primary" id="createBtn">Create room</button>
+        <input id="joinCode" placeholder="Enter room code" style="padding:8px 10px;border-radius:10px;border:1px solid #2a3b60;background:#0c1220;color:#e8eef7"/>
+        <button class="btn" id="joinBtn">Join room</button>
+      </div>
+      <div class="small" style="margin-top:8px">
+        After creating, share the URL (it will include the room code). Two players only.
+      </div>
+      <div id="connectStatus" class="small" style="margin-top:8px"></div>
+    </div>
+
+    <div style="height:10px"></div>
+
+    <div class="grid" id="board"></div>
+    <div style="height:10px"></div>
+    <div class="small" id="statusText"></div>
+  </div>
+
+  <div class="card">
+    <h2>Setup & Actions</h2>
+
+    <div id="numbersUI" style="display:none">
+      <div class="small">Enter 7 positive integers that sum to 15 (your colors are fixed order: Red, Orange, Yellow, Green, Blue, Navy, Purple).</div>
+      <div style="height:10px"></div>
+      <div class="numbers" id="numInputs"></div>
+      <div style="height:10px"></div>
+      <div class="row">
+        <button class="btn primary" id="submitNumsBtn">Submit numbers</button>
+        <button class="btn" id="randNumsBtn">Random valid</button>
+      </div>
+      <div class="small" style="margin-top:10px">
+        Your numbers are hidden from your opponent (until captures).
+      </div>
+    </div>
+
+    <div id="helpUI" class="small" style="margin-top:8px">
+      Movement: up to n steps to adjacent squares (turning allowed), cannot step onto occupied squares. Battles resolve after each move against all adjacent enemies simultaneously. Special rule: each player's largest piece loses to opponent's 1.
+    </div>
+
+    <h2>Log</h2>
+    <div class="log" id="log"></div>
+  </div>
+</div>
+
+<script>
+(() => {
+  const SIZE = 7;
+  const COLORS = [
+    {name:"Red",    hex:"#ff4a4a"},
+    {name:"Orange", hex:"#ff9a3c"},
+    {name:"Yellow", hex:"#ffd85a"},
+    {name:"Green",  hex:"#39d98a"},
+    {name:"Blue",   hex:"#4aa3ff"},
+    {name:"Navy",   hex:"#2f4cff"},
+    {name:"Purple", hex:"#b65cff"},
+  ];
+  const HOME_COLS = {1:[0,1], 2:[5,6]};
+  const TARGET_COL = {1:5, 2:1};
+  const TARGET_ROWS = new Set([1,2,3,4,5]);
+
+  const boardEl = document.getElementById("board");
+  const roomPill = document.getElementById("roomPill");
+  const youPill = document.getElementById("youPill");
+  const phasePill = document.getElementById("phasePill");
+  const turnPill = document.getElementById("turnPill");
+  const statusText = document.getElementById("statusText");
+  const logEl = document.getElementById("log");
+
+  const connectUI = document.getElementById("connectUI");
+  const connectStatus = document.getElementById("connectStatus");
+  const createBtn = document.getElementById("createBtn");
+  const joinBtn = document.getElementById("joinBtn");
+  const joinCode = document.getElementById("joinCode");
+  const resetBtn = document.getElementById("resetBtn");
+
+  const numbersUI = document.getElementById("numbersUI");
+  const numInputs = document.getElementById("numInputs");
+  const submitNumsBtn = document.getElementById("submitNumsBtn");
+  const randNumsBtn = document.getElementById("randNumsBtn");
+
+  let ws = null;
+  let youAre = null;
+  let state = null;
+
+  let selection = null;      // {id}
+  let legalMoves = new Set();// "r,c"
+
+  function inBounds(r,c){ return r>=0 && r<SIZE && c>=0 && c<SIZE; }
+  function keyPos(r,c){ return `${r},${c}`; }
+  function parsePos(k){ const [r,c]=k.split(",").map(Number); return {r,c}; }
+
+  function setStatus(msg, kind=""){
+    statusText.textContent = msg;
+    statusText.className = "small " + (kind==="ok"?"ok":kind==="bad"?"bad":"");
+  }
+
+  function pieceAt(r,c){
+    if (!state) return null;
+    for (const p of [1,2]){
+      for (const pc of state.pieces[p]){
+        if (pc.alive && pc.pos && pc.pos.r===r && pc.pos.c===c) return {player:p, piece:pc};
+      }
+    }
+    return null;
+  }
+
+  // client-side BFS for highlighting only (server is source of truth)
+  function reachableSquares(startR, startC, steps){
+    const seen = new Set([keyPos(startR,startC)]);
+    const q = [{r:startR,c:startC,d:0}];
+    const out = new Set();
+    const dirs = [{dr:-1,dc:0},{dr:1,dc:0},{dr:0,dc:-1},{dr:0,dc:1}];
+
+    while(q.length){
+      const cur = q.shift();
+      if (cur.d === steps) continue;
+
+      for (const dir of dirs){
+        const rr = cur.r + dir.dr;
+        const cc = cur.c + dir.dc;
+        if (!inBounds(rr,cc)) continue;
+        const k = keyPos(rr,cc);
+        if (seen.has(k)) continue;
+        if (pieceAt(rr,cc)) continue;
+
+        seen.add(k);
+        out.add(k);
+        q.push({r:rr,c:cc,d:cur.d+1});
+      }
+    }
+    return out;
+  }
+
+  function isTargetSquareFor(player, r,c){
+    return c===TARGET_COL[player] && TARGET_ROWS.has(r);
+  }
+
+  function render(){
+    if (!state) return;
+
+    roomPill.textContent = `Room: ${state.code}`;
+    youPill.textContent = `You: Player ${youAre}`;
+    phasePill.textContent = `Phase: ${state.phase}`;
+    turnPill.textContent = (state.phase==="PLAY") ? `Turn: Player ${state.currentPlayer}` : "Turn: —";
+    resetBtn.disabled = false;
+
+    // log
+    logEl.textContent = state.log.join("\n");
+
+    // show/hide numbers UI based on setup step and your role
+    const needNums = (state.setupStep === "P1_NUMBERS" && youAre===1) || (state.setupStep === "P2_NUMBERS" && youAre===2);
+    numbersUI.style.display = needNums ? "block" : "none";
+
+    // During placement, tell user to click squares
+    if ((state.setupStep==="P1_PLACE" && youAre===1) || (state.setupStep==="P2_PLACE" && youAre===2)){
+      setStatus("Placement: click empty squares in your two home columns to place pieces (in color order).", "ok");
+    } else if (state.phase==="PLAY"){
+      if (state.currentPlayer === youAre) setStatus("Your turn: click your piece, then a green destination square.", "ok");
+      else setStatus("Waiting for opponent...", "");
+    } else if (state.phase==="GAME_OVER"){
+      setStatus(state.gameOverMsg || "Game over.", "ok");
+    } else if (needNums){
+      setStatus("Enter your 7 numbers (sum 15), then submit.", "ok");
+    } else {
+      setStatus("Waiting for the other player...", "");
+    }
+
+    // board
+    boardEl.innerHTML = "";
+    for (let r=0;r<SIZE;r++){
+      for (let c=0;c<SIZE;c++){
+        const cell = document.createElement("div");
+        cell.className = "cell";
+        cell.dataset.r = r;
+        cell.dataset.c = c;
+
+        if (HOME_COLS[1].includes(c)) cell.classList.add("home1");
+        if (HOME_COLS[2].includes(c)) cell.classList.add("home2");
+        if (isTargetSquareFor(1,r,c)) cell.classList.add("target1");
+        if (isTargetSquareFor(2,r,c)) cell.classList.add("target2");
+
+        const k = keyPos(r,c);
+        if (selection){
+          const selPc = state.pieces[youAre].find(p => p.id===selection.id);
+          if (selPc && selPc.pos && selPc.pos.r===r && selPc.pos.c===c) cell.classList.add("sel");
+        }
+        if (legalMoves.has(k)) cell.classList.add("legal");
+
+        const occ = pieceAt(r,c);
+        if (occ){
+          const pc = occ.piece;
+          const d = document.createElement("div");
+          d.className = "piece";
+          d.style.background = COLORS[pc.id].hex;
+
+          // show number only if server included it (your own pieces)
+          d.textContent = (pc.n != null) ? String(pc.n) : "";
+
+          const dot = document.createElement("div");
+          dot.className = "dot";
+          dot.textContent = occ.player;
+          d.appendChild(dot);
+          cell.appendChild(d);
+        }
+
+        cell.addEventListener("click", onCellClick);
+        boardEl.appendChild(cell);
+      }
+    }
+  }
+
+  function clearNumsInputs(){
+    numInputs.innerHTML = "";
+    for (let i=0;i<7;i++){
+      const inp = document.createElement("input");
+      inp.type="number"; inp.min="1"; inp.step="1";
+      inp.placeholder = COLORS[i].name;
+      inp.dataset.idx = i;
+      numInputs.appendChild(inp);
+    }
+  }
+  clearNumsInputs();
+
+  function randomValidNums(){
+    let arr = Array(7).fill(1);
+    let rem = 8;
+    while(rem>0){ arr[Math.floor(Math.random()*7)]++; rem--; }
+    for (let i=arr.length-1;i>0;i--){
+      const j = Math.floor(Math.random()*(i+1));
+      [arr[i],arr[j]]=[arr[j],arr[i]];
+    }
+    return arr;
+  }
+
+  function onCellClick(e){
+    if (!state || !youAre) return;
+    const r = Number(e.currentTarget.dataset.r);
+    const c = Number(e.currentTarget.dataset.c);
+
+    // Placement step for you
+    const placing = (state.setupStep==="P1_PLACE" && youAre===1) || (state.setupStep==="P2_PLACE" && youAre===2);
+    if (placing){
+      wsSend({ type:"PLACE_PIECE", r, c });
+      return;
+    }
+
+    // Play
+    if (state.phase !== "PLAY") return;
+    if (state.currentPlayer !== youAre) return;
+
+    const occ = pieceAt(r,c);
+    if (occ && occ.player===youAre){
+      // select
+      selection = { id: occ.piece.id };
+      legalMoves.clear();
+      const pc = occ.piece;
+      if (pc.pos && pc.n != null){
+        legalMoves = reachableSquares(pc.pos.r, pc.pos.c, pc.n);
+      }
+      render();
+      return;
+    }
+
+    // move if legal
+    if (selection && legalMoves.has(keyPos(r,c))){
+      wsSend({ type:"MOVE", pieceId: selection.id, toR: r, toC: c });
+      selection = null;
+      legalMoves.clear();
+      render();
+      return;
+    }
+  }
+
+  function wsSend(obj){
+    if (ws && ws.readyState===WebSocket.OPEN){
+      ws.send(JSON.stringify(obj));
+    }
+  }
+
+  function connect(){
+    // same origin ws
+    const proto = location.protocol === "https:" ? "wss" : "ws";
+    ws = new WebSocket(`${proto}://${location.host}`);
+    ws.onopen = () => {
+      connectStatus.textContent = "Connected.";
+      connectStatus.className = "small ok";
+      // auto-join if hash has room
+      const hash = location.hash.replace("#","").trim().toUpperCase();
+      if (hash){
+        wsSend({ type:"JOIN_ROOM", code: hash });
+      }
+    };
+    ws.onmessage = (ev) => {
+      const msg = JSON.parse(ev.data);
+
+      if (msg.type==="ROOM_CREATED"){
+        location.hash = msg.code;
+        wsSend({ type:"JOIN_ROOM", code: msg.code });
+        return;
+      }
+      if (msg.type==="STATE"){
+        state = msg.state;
+        youAre = msg.youAre;
+
+        // if numbers screen is visible, ensure inputs exist; but DON'T preserve old values across submits
+        // (we clear after successful submit below)
+        render();
+        connectUI.style.display = "none";
+        return;
+      }
+      if (msg.type==="ERROR"){
+        setStatus(msg.message, "bad");
+        return;
+      }
+    };
+    ws.onclose = () => {
+      connectStatus.textContent = "Disconnected. Refresh to reconnect.";
+      connectStatus.className = "small bad";
+    };
+  }
+
+  createBtn.addEventListener("click", () => wsSend({ type:"CREATE_ROOM" }));
+  joinBtn.addEventListener("click", () => {
+    const code = joinCode.value.trim().toUpperCase();
+    if (!code) return;
+    location.hash = code;
+    wsSend({ type:"JOIN_ROOM", code });
+  });
+
+  submitNumsBtn.addEventListener("click", () => {
+    const vals = [...numInputs.querySelectorAll("input")].map(x => Number(x.value));
+    wsSend({ type:"SUBMIT_NUMBERS", nums: vals });
+
+    // IMPORTANT: erase immediately so your opponent can't see if they grab your device
+    [...numInputs.querySelectorAll("input")].forEach(inp => inp.value = "");
+  });
+
+  randNumsBtn.addEventListener("click", () => {
+    const arr = randomValidNums();
+    [...numInputs.querySelectorAll("input")].forEach((inp,i)=>inp.value = arr[i]);
+  });
+
+  resetBtn.addEventListener("click", () => {
+    selection = null; legalMoves.clear();
+    wsSend({ type:"RESET_ROOM" });
+    clearNumsInputs();
+  });
+
+  connect();
+})();
+</script>
+</body>
+</html>
