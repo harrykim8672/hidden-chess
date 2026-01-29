@@ -8,8 +8,26 @@ app.use(express.static("public"));
 const server = http.createServer(app);
 const wss = new WebSocketServer({ server });
 
-const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => console.log("Server on port", PORT));
+
+const express = require("express");
+const path = require("path");
+
+const app = express();
+
+// Serve static files from the repo root (so /index.html, /script.js, /style.css work)
+app.use(express.static(__dirname));
+
+// Make / return index.html
+app.get("/", (req, res) => {
+  res.sendFile(path.join(__dirname, "index.html"));
+});
+
+// IMPORTANT for Render/hosting: use process.env.PORT and bind 0.0.0.0
+const PORT = process.env.PORT || 10000;
+app.listen(PORT, "0.0.0.0", () => {
+  console.log(`Listening on ${PORT}`);
+});
+
 
 /**
  * Room state lives ONLY on server.
